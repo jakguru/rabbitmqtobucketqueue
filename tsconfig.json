@@ -1,0 +1,51 @@
+{
+  "extends": "adonis-preset-ts/tsconfig.json",
+  "include": [
+    "**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "docs",
+  ],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "ts-node": {
+    "transpileOnly": true
+  },
+  "typedocOptions": {
+    "hideGenerator": true,
+    "includeVersion": true,
+    "searchInComments": true,
+    "entryPoints": ["index.ts"],
+    "out": "docs",
+    "name": "RabbitMQ to Bucket Queue",
+    "readme": "README.md",
+    "theme": "default",
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "externalSymbolLinkMappings": {
+      "typescript": {
+        "defaultMaxListeners": "https://nodejs.org/api/events.html#events_emitter_defaultmaxlisteners",
+      },
+      "ioredis": {
+        "RedisOptions": "https://luin.github.io/ioredis/index.html#RedisOptions"
+      },
+      "amqplib": {
+        "Channel": "https://amqp-node.github.io/amqplib/channel_api.html#channel",
+        "ConfirmChannel": "https://amqp-node.github.io/amqplib/channel_api.html#confirmchannel"
+      },
+    },
+    "compilerOptions": {
+      "noUnusedLocals": false,
+      "noUnusedParameters": false,
+      "strict": false
+    }
+  }
+}
