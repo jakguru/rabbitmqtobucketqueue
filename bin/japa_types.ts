@@ -1,8 +1,7 @@
 import '@japa/runner'
-import type { Docker } from 'node-docker-api'
 declare module '@japa/runner' {
   interface TestContext {
-    docker: Docker
+    // notify TypeScript about custom test context properties
   }
 
   interface Test<TestData> {

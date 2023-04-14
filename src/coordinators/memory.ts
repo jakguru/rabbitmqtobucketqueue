@@ -1,4 +1,4 @@
-import { CoordinatorDriverBase } from 'abstracts'
+import { CoordinatorDriverBase } from '../../abstracts'
 
 /**
  * The `MemoryCoordinator` class provides a simple in-memory coordinator which cannot be shared between instances.
@@ -30,6 +30,13 @@ export class MemoryCoordinator extends CoordinatorDriverBase {
   public increment(count: number): void {
     this.#total += count
     return
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.reset}
+   */
+  public reset(): void {
+    this.#reset()
   }
 
   #reset(): void {

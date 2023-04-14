@@ -3,18 +3,18 @@ import merge from 'lodash.merge'
 import amqplib from 'amqplib'
 import { schema, rules } from 'Validator'
 import { Channel } from 'amqplib/lib/channel_model'
-import { CoordinatorDriverBase } from 'abstracts'
+import { CoordinatorDriverBase } from '../abstracts'
 import {
   DatabaseCoordinator,
   MemoryCoordinator,
   MQTTCoordinator,
   RedisCoordinator,
-} from 'src/coordinators'
+} from '../src/coordinators'
 import pino from 'pino'
 
-import type { CoordinatorDriver } from 'contracts/CoordinatorDriver'
+import type { CoordinatorDriver } from '../contracts/CoordinatorDriver'
 import type { Logger } from 'pino'
-import type * as RMQBQ from 'contracts/RMQBQ'
+import type * as RMQBQ from '../contracts/RMQBQ'
 
 const DefaultOptions: RMQBQ.DefaultOptions = {
   coordinator: 'memory',

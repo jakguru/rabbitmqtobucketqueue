@@ -43,4 +43,21 @@ export abstract class CoordinatorDriverBase<CoordinatorDriverOptionsType = undef
    * @param count The number of to increment the counter by.
    */
   public abstract increment(count: number): void | Promise<void>
+
+  /**
+   * Reset the balance to the maximum batch size.
+   */
+  public abstract reset(): void | Promise<void>
+
+  /**
+   * Remove all expired items from the coordination store.
+   * This method is called automatically by the RabbitMQToBucketQueue instance.
+   * It is not abstracted because it is not required for all coordination drivers.
+   */
+  public declutter(): void | Promise<void> {}
+
+  /**
+   * A function which is called to cleanly shutdown the coordination driver.
+   */
+  public shutdown(): void | Promise<void> {}
 }

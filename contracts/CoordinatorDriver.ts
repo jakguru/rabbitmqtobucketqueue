@@ -14,4 +14,20 @@ export interface CoordinatorDriver {
    * @param count The number of items to increment the counter by.
    */
   increment(count: number): void | Promise<void>
+
+  /**
+   * Reset the balance to the maximum batch size.
+   */
+  reset(): void | Promise<void>
+
+  /**
+   * Remove all expired items from the coordination store.
+   * This method is called automatically by the RabbitMQToBucketQueue instance.
+   */
+  declutter(): void | Promise<void>
+
+  /**
+   * A function which is called to cleanly shutdown the coordination driver.
+   */
+  shutdown(): void | Promise<void>
 }

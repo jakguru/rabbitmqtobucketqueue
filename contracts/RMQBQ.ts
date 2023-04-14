@@ -15,6 +15,7 @@ export interface MQTTOptions extends MQTTBaseOptions {
 
 export interface DatabaseOptions extends Knex.Config {
   table: string
+  client: 'pg' | 'sqlite3' | 'mssql' | 'mysql' | 'mysql2' | 'oracledb'
 }
 
 export interface RabbitMQConnectionOptions extends amqplib.Options.Connect {}

@@ -1,0 +1,49 @@
+version: "3.0"
+services:
+  rabbitmq:
+    container_name: rabbitmq-rmqbq-test
+    image: rabbitmq:3
+    networks:
+      - rmqbq-test-net
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+  redis:
+    container_name: redis-rmqbq-test
+    image: redis:6.2-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --loglevel warning --appendonly no --stop-writes-on-bgsave-error no
+    networks:
+      - rmqbq-test-net
+    ports:
+      - "${REDIS_PORT}:6379"
+  mqtt:
+    container_name: mt-container
+    image: eclipse-mosquitto
+    volumes:
+      - ./mqtt:/mosquitto/config
+    networks:
+      - rmqbq-test-net
+    ports:
+      - "${MQTT_PORT}:1883"
+  db-postgres:
+    container_name: db-postgres-rmqbq-test
+    image: postgres:12-alpine
+    environment:
+      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+      - "POSTGRES_DB=${POSTGRES_DB}"
+    ports:
+      - "${POSTGRES_PORT}:5432"
+  db-mysql:
+    container_name: db-mysql-rmqbq-test
+    image: mysql
+    environment:
+      - "MYSQL_USER=${MYSQL_USER}"
+      - "MYSQL_PASSWORD=${MYSQL_PASSWORD}"
+      - "MYSQL_DATABASE=${MYSQL_DATABASE}"
+      - "MYSQL_RANDOM_ROOT_PASSWORD=yes"
+    ports:
+      - "${MYSQL_PORT}:3306"
+networks:
+  rmqbq-test-net:
+    driver: bridge

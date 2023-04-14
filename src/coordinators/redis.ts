@@ -1,7 +1,7 @@
-import { CoordinatorDriverBase } from 'abstracts'
+import { CoordinatorDriverBase } from '../../abstracts'
 import { Redis } from 'ioredis'
-import type * as RMQBQ from 'contracts/RMQBQ'
 import { v4 as uuidv4 } from 'uuid'
+import type * as RMQBQ from 'contracts/RMQBQ'
 
 /**
  * The `RedisCoordinator` class provides a coordinator which uses Redis to ensure cross-process consistency of counts.
@@ -14,6 +14,12 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
    */
   constructor(queue: string, maxBatch: number, interval: number, options: RMQBQ.RedisOptions) {
     super(queue, maxBatch, interval, options)
+    const remainder = this.$interval % 1000
+    if (remainder !== 0) {
+      throw new Error(
+        `Redis requires intervals in round seconds represented as milliseconds. ${this.$interval} is not divisible by 1000.`
+      )
+    }
     this.#client = new Redis(options)
   }
 
@@ -33,6 +39,18 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
     return
   }
 
+  /**
+   * {@inheritDoc CoordinatorDriverBase.reset}
+   */
+  public async reset(): Promise<void> {
+    const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
+    const keys = await this.#client.keys(pattern)
+    if (keys.length === 0) {
+      return
+    }
+    await this.#client.del(keys)
+  }
+
   async #getBalance(): Promise<number> {
     const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
     const keys = await this.#client.keys(pattern)
@@ -40,7 +58,11 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
       return this.$maxBatch
     }
     const values = await this.#client.mget(keys)
-    const sum = values.reduce((acc, val) => acc + Number(val), 0)
-    return this.$maxBatch - sum
+    let sum = 0
+    for (let i = 0; i < values.length; i++) {
+      sum += parseInt(values[i] as string)
+    }
+    const balance = this.$maxBatch - sum
+    return balance < 0 ? 0 : balance
   }
 }
