@@ -1,11 +1,17 @@
 import { test } from '@japa/runner'
 import { DatabaseCoordinator } from '../../../src/coordinators/database'
 import { postgresConnectionOptions } from '../../common'
+import type * as RMQBQ from '../../../contracts/RMQBQ'
 
 test.group('DatabaseCoordinator - PostgreSQL', (group) => {
   group.tap((test) => test.tags(['coordinators', 'database', 'postgres']))
   test('balance returns correct value', async ({ assert }) => {
-    const coordinator = new DatabaseCoordinator('test-queue', 5, 1000, postgresConnectionOptions)
+    const coordinator = await DatabaseCoordinator.initialize<RMQBQ.DatabaseOptions>(
+      'test-queue',
+      5,
+      1000,
+      postgresConnectionOptions
+    )
     await coordinator.reset()
     assert.equal(await coordinator.balance, 5)
     await coordinator.increment(2)
@@ -26,7 +32,12 @@ test.group('DatabaseCoordinator - PostgreSQL', (group) => {
     })
 
   test('increment increases total correctly', async ({ assert }) => {
-    const coordinator = new DatabaseCoordinator('test-queue', 5, 1000, postgresConnectionOptions)
+    const coordinator = await DatabaseCoordinator.initialize<RMQBQ.DatabaseOptions>(
+      'test-queue',
+      5,
+      1000,
+      postgresConnectionOptions
+    )
     await coordinator.reset()
     await coordinator.increment(1)
     assert.equal(await coordinator.balance, 4)
@@ -44,7 +55,7 @@ test.group('DatabaseCoordinator - PostgreSQL', (group) => {
 
   test('total resets after interval', async ({ assert }) => {
     const interval = 1000
-    const coordinator = new DatabaseCoordinator(
+    const coordinator = await DatabaseCoordinator.initialize<RMQBQ.DatabaseOptions>(
       'test-queue',
       5,
       interval,
