@@ -2,6 +2,8 @@ import { CoordinatorDriverBase } from '../../abstracts'
 import { connect, Client } from 'mqtt'
 import { v4 as uuidv4 } from 'uuid'
 import { DateTime } from 'luxon'
+import { CoordinatorTestFailedError } from '../CoordinatorTestFailedError'
+import { Socket } from 'net'
 import type * as RMQBQ from 'contracts/RMQBQ'
 
 /**
@@ -13,9 +15,9 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
   readonly #client: Client
   readonly #connPromise: Promise<void>
   #connected: boolean = false
+
   /**
-   * {@inheritDoc CoordinatorDriverBase.constructor}
-   * @param options Options for connecting to the MQTT Broker
+   * @private
    */
   constructor(queue: string, maxBatch: number, interval: number, options: RMQBQ.MQTTOptions) {
     super(queue, maxBatch, interval, options)
@@ -40,24 +42,11 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
           resolve()
         }
       })
-      // @ts-ignore
-      this.#client.stream.on('error', (err) => {
-        if (!resolved) {
-          resolved = true
-          reject(err)
-        }
-        this.#client.end()
-      })
     })
     this.#client.on('connect', this.#onConnection.bind(this))
     this.#client.on('close', this.#onClose.bind(this))
     this.#client.on('message', this.#onMessage.bind(this))
     this.#client.on('error', this.#onError.bind(this))
-    // @ts-ignore
-    this.#client.stream.on('error', (err) => {
-      console.log('error', err)
-      this.#client.end()
-    })
   }
 
   /**
@@ -65,6 +54,14 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
    */
   public get balance(): Promise<number> {
     return this.#getBalance()
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.ready}
+   */
+  public async ready(): Promise<void> {
+    await this.#connPromise
+    return
   }
 
   /**
@@ -91,17 +88,14 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
           expires: expires.toISO(),
         }),
         {
-          qos: 1,
+          qos: 2,
           retain: true,
           dup: false,
           properties: {
             messageExpiryInterval: this.$interval / 1000,
           },
         },
-        (err) => {
-          if (err) {
-            return resolve(err)
-          }
+        () => {
           resolve(undefined)
         }
       )
@@ -125,17 +119,9 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
     const topics = [...this.#store.keys()].map((uuid) => ['rmqbq', this.$queue, uuid].join('/'))
     const promises = topics.map((topic) => {
       return new Promise((resolve) => {
-        this.#client.publish(
-          topic,
-          Buffer.alloc(0),
-          { qos: 1, retain: true, dup: false },
-          (err) => {
-            if (err) {
-              return resolve(err)
-            }
-            resolve(undefined)
-          }
-        )
+        this.#client.publish(topic, Buffer.alloc(0), { qos: 2, retain: true, dup: false }, () => {
+          resolve(undefined)
+        })
       })
     })
     await Promise.all(promises)
@@ -152,11 +138,46 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
         new Promise((_resolve, reject) => setTimeout(reject, 1000, new Error('Timeout'))),
       ])
     } catch {}
+    // @ts-ignore
+    for (const key in this.#client.outgoing) {
+      // @ts-ignore
+      if (this.#client.outgoing[key].volatile) {
+        // @ts-ignore
+        delete this.#client.outgoing[key]
+      }
+    }
     await new Promise((resolve) => {
-      this.#client.end(true, {}, () => {
+      const topic = ['rmqbq', this.$queue, '+'].join('/')
+      this.#client.unsubscribe(topic, {}, () => {
         resolve(undefined)
       })
     })
+    await new Promise((resolve) => {
+      this.#client.end(false, {}, () => {
+        resolve(undefined)
+      })
+    })
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.test}
+   */
+  public async test(): Promise<void> | never {
+    try {
+      await Promise.race([
+        this.#connPromise,
+        new Promise((_resolve, reject) => setTimeout(reject, 1000, new Error('Timeout'))),
+      ])
+    } catch (error) {
+      throw new CoordinatorTestFailedError(error)
+    }
+    if (!this.#connected || !this.#clientConnected) {
+      throw new CoordinatorTestFailedError('Not connected to MQTT Broker')
+    }
+  }
+
+  get #clientConnected() {
+    return this.#client.connected
   }
 
   async #getBalance(): Promise<number> {
@@ -165,7 +186,12 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
         this.#connPromise,
         new Promise((_resolve, reject) => setTimeout(reject, 1000, new Error('Timeout'))),
       ])
-    } catch {}
+    } catch (e) {
+      return 0
+    }
+    if (!this.#connected || !this.#clientConnected) {
+      throw new Error('Not connected to MQTT Broker')
+    }
     let sum = 0
     const now = DateTime.now()
     this.#store.forEach(({ count, expires }, uuid) => {
@@ -180,6 +206,11 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
   }
 
   #onConnection(connack) {
+    // @ts-ignore
+    if (this.#client.stream instanceof Socket) {
+      // @ts-ignore
+      this.#client.stream.on('error', this.#onError.bind(this))
+    }
     this.#connected = true
     if (
       'object' !== connack ||
@@ -192,11 +223,14 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
         topic,
         {
           nl: false,
-          qos: 1,
+          qos: 2,
           rh: 0,
         },
         (err) => {
           if (err) {
+            if ('Connection closed' === err.message) {
+              return
+            }
             throw err
           }
         }
@@ -222,9 +256,11 @@ export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
 
   #onClose() {
     this.#connected = false
+    const topic = ['rmqbq', this.$queue, '+'].join('/')
+    this.#client.unsubscribe(topic, {}, () => {})
   }
 
-  #onError(err) {
-    process.emitWarning(`MQTT Error: ${err.message}`, 'MQTTError')
+  #onError() {
+    this.#client.end()
   }
 }

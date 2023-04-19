@@ -2,14 +2,15 @@ import { CoordinatorDriverBase } from '../../abstracts'
 import knex, { Knex } from 'knex'
 import { v4 as uuidv4 } from 'uuid'
 import { DateTime } from 'luxon'
+import { CoordinatorTestFailedError } from '../CoordinatorTestFailedError'
 import type * as RMQBQ from 'contracts/RMQBQ'
 
 export class DatabaseCoordinator extends CoordinatorDriverBase<RMQBQ.DatabaseOptions> {
   readonly #table: string
   #client: Knex
+
   /**
-   * {@inheritDoc CoordinatorDriverBase.constructor}
-   * @param options Options for connecting to the database
+   * @private
    */
   constructor(queue: string, maxBatch: number, interval: number, options: RMQBQ.DatabaseOptions) {
     super(queue, maxBatch, interval, options)
@@ -22,6 +23,13 @@ export class DatabaseCoordinator extends CoordinatorDriverBase<RMQBQ.DatabaseOpt
    */
   public get balance(): Promise<number> {
     return this.#getBalance()
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.ready}
+   */
+  public async ready(): Promise<void> {
+    return
   }
 
   /**
@@ -52,6 +60,18 @@ export class DatabaseCoordinator extends CoordinatorDriverBase<RMQBQ.DatabaseOpt
   public async declutter(): Promise<void> {
     const now = DateTime.utc().toJSDate()
     await this.#client(this.#table).where('expires_at', '<=', now).del()
+    return
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.test}
+   */
+  public async test(): Promise<void> | never {
+    try {
+      await this.#client.raw('select 1+1 as result')
+    } catch (error) {
+      throw new CoordinatorTestFailedError(error)
+    }
     return
   }
 

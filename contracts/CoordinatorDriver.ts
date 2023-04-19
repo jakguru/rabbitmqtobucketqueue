@@ -10,6 +10,11 @@ export interface CoordinatorDriver {
   balance: number | Promise<number>
 
   /**
+   * A function which is called to initialise the coordination driver.
+   */
+  ready(): Promise<void> | never
+
+  /**
    * Inform the coordinator that a certain number of items has been sent
    * @param count The number of items to increment the counter by.
    */
@@ -30,4 +35,10 @@ export interface CoordinatorDriver {
    * A function which is called to cleanly shutdown the coordination driver.
    */
   shutdown(): void | Promise<void>
+
+  /**
+   * A function which is called to test the coordination driver. This can be used to check connectivity, or perform any other relevant validations asyncronously.
+   * @throws {@link CoordinatorTestFailedError} if the test fails.
+   */
+  test(): void | Promise<void> | never
 }

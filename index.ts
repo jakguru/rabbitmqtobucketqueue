@@ -1,4 +1,5 @@
 export * from './src/RabbitMQToBucketQueue'
+export * from './src/CoordinatorTestFailedError'
 export * from './contracts'
 export * from './abstracts'
 export * from './src/coordinators'

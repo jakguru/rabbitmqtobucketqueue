@@ -9,8 +9,7 @@ export class MemoryCoordinator extends CoordinatorDriverBase {
   #total: number = 0
 
   /**
-   * {@inheritDoc CoordinatorDriverBase.constructor}
-   * @param options Undefined. No Options are required for the MemoryCoordinator
+   * @private
    */
   constructor(queue: string, maxBatch: number, interval: number) {
     super(queue, maxBatch, interval, undefined)
@@ -22,6 +21,13 @@ export class MemoryCoordinator extends CoordinatorDriverBase {
    */
   public get balance(): number {
     return this.#total >= this.$maxBatch ? 0 : this.$maxBatch - this.#total
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.ready}
+   */
+  public async ready(): Promise<void> {
+    return
   }
 
   /**
@@ -37,6 +43,13 @@ export class MemoryCoordinator extends CoordinatorDriverBase {
    */
   public reset(): void {
     this.#reset()
+  }
+
+  /**
+   * {@inheritDoc CoordinatorDriverBase.test}
+   */
+  public test(): void {
+    return
   }
 
   #reset(): void {

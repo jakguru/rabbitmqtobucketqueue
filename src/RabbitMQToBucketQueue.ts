@@ -263,7 +263,7 @@ export class RabbitMQToBucketQueue<T = Buffer>
     } else {
       switch (options.coordinator) {
         case 'database':
-          this.#coordinator = new DatabaseCoordinator(
+          this.#coordinator = await DatabaseCoordinator.initialize<RMQBQ.DatabaseOptions>(
             options.queue,
             options.maxBatch,
             options.interval,
@@ -272,15 +272,16 @@ export class RabbitMQToBucketQueue<T = Buffer>
           break
 
         case 'memory':
-          this.#coordinator = new MemoryCoordinator(
+          this.#coordinator = await MemoryCoordinator.initialize(
             options.queue,
             options.maxBatch,
-            options.interval
+            options.interval,
+            undefined
           )
           break
 
         case 'mqtt':
-          this.#coordinator = new MQTTCoordinator(
+          this.#coordinator = await MQTTCoordinator.initialize<RMQBQ.MQTTOptions>(
             options.queue,
             options.maxBatch,
             options.interval,
@@ -289,7 +290,7 @@ export class RabbitMQToBucketQueue<T = Buffer>
           break
 
         case 'redis':
-          this.#coordinator = new RedisCoordinator(
+          this.#coordinator = await RedisCoordinator.initialize<RMQBQ.RedisOptions>(
             options.queue,
             options.maxBatch,
             options.interval,

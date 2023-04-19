@@ -1,11 +1,17 @@
 import { test } from '@japa/runner'
 import { MQTTCoordinator } from '../../src/coordinators/mqtt'
 import { mqttConnectionOptions } from '../common'
+import type * as RMQBQ from '../../contracts/RMQBQ'
 
 test.group('MQTTCoordinator', (group) => {
   group.tap((test) => test.tags(['coordinators', 'mqtt']))
-  test('constructor sets properties correctly', ({ assert }) => {
-    const coordinator = new MQTTCoordinator('test-queue', 5, 1000, mqttConnectionOptions)
+  test('constructor sets properties correctly', async ({ assert }) => {
+    const coordinator = await MQTTCoordinator.initialize<RMQBQ.MQTTOptions>(
+      'test-queue',
+      5,
+      1000,
+      mqttConnectionOptions
+    )
 
     assert.equal(coordinator['$queue'], 'test-queue')
     assert.equal(coordinator['$maxBatch'], 5)
@@ -55,7 +61,12 @@ test.group('MQTTCoordinator', (group) => {
   })
 
   test('balance returns correct value', async ({ assert }) => {
-    const coordinator = new MQTTCoordinator('test-queue', 5, 1000, mqttConnectionOptions)
+    const coordinator = await MQTTCoordinator.initialize<RMQBQ.MQTTOptions>(
+      'test-queue',
+      5,
+      1000,
+      mqttConnectionOptions
+    )
 
     assert.equal(await coordinator.balance, 5)
     await coordinator.increment(2)
@@ -70,7 +81,12 @@ test.group('MQTTCoordinator', (group) => {
   })
 
   test('increment increases total correctly', async ({ assert }) => {
-    const coordinator = new MQTTCoordinator('test-queue', 5, 1000, mqttConnectionOptions)
+    const coordinator = await MQTTCoordinator.initialize<RMQBQ.MQTTOptions>(
+      'test-queue',
+      5,
+      1000,
+      mqttConnectionOptions
+    )
 
     await coordinator.increment(1)
     assert.equal(await coordinator.balance, 4)
@@ -82,7 +98,12 @@ test.group('MQTTCoordinator', (group) => {
 
   test('total resets after interval', async ({ assert }) => {
     const interval = 1000
-    const coordinator = new MQTTCoordinator('test-queue', 5, interval, mqttConnectionOptions)
+    const coordinator = await MQTTCoordinator.initialize<RMQBQ.MQTTOptions>(
+      'test-queue',
+      5,
+      interval,
+      mqttConnectionOptions
+    )
 
     await coordinator.increment(2)
     assert.equal(await coordinator.balance, 3)

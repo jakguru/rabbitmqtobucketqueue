@@ -1,11 +1,17 @@
 import { test } from '@japa/runner'
 import { RedisCoordinator } from '../../src/coordinators/redis'
 import { redisConnectionOptions } from '../common'
+import type * as RMQBQ from '../../contracts/RMQBQ'
 
 test.group('RedisCoordinator', (group) => {
   group.tap((test) => test.tags(['coordinators', 'redis']))
-  test('constructor sets properties correctly', ({ assert }) => {
-    const coordinator = new RedisCoordinator('test-queue', 5, 1000, redisConnectionOptions)
+  test('constructor sets properties correctly', async ({ assert }) => {
+    const coordinator = await RedisCoordinator.initialize<RMQBQ.RedisOptions>(
+      'test-queue',
+      5,
+      1000,
+      redisConnectionOptions
+    )
 
     assert.equal(coordinator['$queue'], 'test-queue')
     assert.equal(coordinator['$maxBatch'], 5)
@@ -55,7 +61,12 @@ test.group('RedisCoordinator', (group) => {
   })
 
   test('balance returns correct value', async ({ assert }) => {
-    const coordinator = new RedisCoordinator('test-queue', 5, 1000, redisConnectionOptions)
+    const coordinator = await RedisCoordinator.initialize<RMQBQ.RedisOptions>(
+      'test-queue',
+      5,
+      1000,
+      redisConnectionOptions
+    )
 
     assert.equal(await coordinator.balance, 5)
     await coordinator.increment(2)
@@ -70,7 +81,12 @@ test.group('RedisCoordinator', (group) => {
   })
 
   test('increment increases total correctly', async ({ assert }) => {
-    const coordinator = new RedisCoordinator('test-queue', 5, 1000, redisConnectionOptions)
+    const coordinator = await RedisCoordinator.initialize<RMQBQ.RedisOptions>(
+      'test-queue',
+      5,
+      1000,
+      redisConnectionOptions
+    )
 
     await coordinator.increment(1)
     assert.equal(await coordinator.balance, 4)
@@ -82,7 +98,12 @@ test.group('RedisCoordinator', (group) => {
 
   test('total resets after interval', async ({ assert }) => {
     const interval = 1000
-    const coordinator = new RedisCoordinator('test-queue', 5, interval, redisConnectionOptions)
+    const coordinator = await RedisCoordinator.initialize<RMQBQ.RedisOptions>(
+      'test-queue',
+      5,
+      interval,
+      redisConnectionOptions
+    )
 
     await coordinator.increment(2)
     assert.equal(await coordinator.balance, 3)

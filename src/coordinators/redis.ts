@@ -2,6 +2,7 @@ import { CoordinatorDriverBase } from '../../abstracts'
 import { Redis } from 'ioredis'
 import { v4 as uuidv4 } from 'uuid'
 import merge from 'lodash.merge'
+import { CoordinatorTestFailedError } from '../CoordinatorTestFailedError'
 import type * as RMQBQ from 'contracts/RMQBQ'
 
 /**
@@ -9,9 +10,9 @@ import type * as RMQBQ from 'contracts/RMQBQ'
  */
 export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> {
   #client: Redis
+
   /**
-   * {@inheritDoc CoordinatorDriverBase.constructor}
-   * @param options Options for connecting to the Redis instance
+   * @private
    */
   constructor(queue: string, maxBatch: number, interval: number, options: RMQBQ.RedisOptions) {
     super(queue, maxBatch, interval, options)
@@ -32,6 +33,13 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
   }
 
   /**
+   * {@inheritDoc CoordinatorDriverBase.ready}
+   */
+  public async ready(): Promise<void> {
+    return
+  }
+
+  /**
    * {@inheritDoc CoordinatorDriverBase.balance}
    */
   public get balance(): Promise<number> {
@@ -42,9 +50,6 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
    * {@inheritDoc CoordinatorDriverBase.increment}
    */
   public async increment(count: number): Promise<void> {
-    // this.#client.once('error', (error) => {
-    //   throw error
-    // })
     const key = [this.$queue, uuidv4()].join(':')
     await this.#client.setex(key, this.$interval / 1000, count)
     return
@@ -54,9 +59,6 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
    * {@inheritDoc CoordinatorDriverBase.reset}
    */
   public async reset(): Promise<void> {
-    // this.#client.once('error', (error) => {
-    //   throw error
-    // })
     const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
     const keys = await this.#client.keys(pattern)
     if (keys.length === 0) {
@@ -65,10 +67,18 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
     await this.#client.del(keys)
   }
 
+  /**
+   * {@inheritDoc CoordinatorDriverBase.test}
+   */
+  public async test(): Promise<void> | never {
+    try {
+      await this.#client.ping()
+    } catch (error) {
+      throw new CoordinatorTestFailedError(error)
+    }
+  }
+
   async #getBalance(): Promise<number> {
-    // this.#client.once('error', (error) => {
-    //   throw error
-    // })
     const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
     const keys = await this.#client.keys(pattern)
     if (keys.length === 0) {

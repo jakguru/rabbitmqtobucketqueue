@@ -214,4 +214,3 @@ export type RabbitMQToBucketQueueEmitterEvent = {
 
 export type { IClientOptions as MQTTBaseOptions } from 'mqtt'
 export type { LoggerOptions } from 'pino'
-export type { Knex } from 'knex'
