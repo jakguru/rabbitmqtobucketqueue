@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { MQTTCoordinator } from '../../src/coordinators/mqtt'
 import { mqttConnectionOptions } from '../common'
 
-test.group('MQTTCoordinator', () => {
+test.group('MQTTCoordinator', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'mqtt']))
   test('constructor sets properties correctly', ({ assert }) => {
     const coordinator = new MQTTCoordinator('test-queue', 5, 1000, mqttConnectionOptions)
 

@@ -4,6 +4,10 @@ import { v4 as uuidv4 } from 'uuid'
 import { DateTime } from 'luxon'
 import type * as RMQBQ from 'contracts/RMQBQ'
 
+/**
+ * The `MQTTCoordinator` class provides a coordinator which uses MQTT to ensure cross-process consistency of counts.
+ * @experimental
+ */
 export class MQTTCoordinator extends CoordinatorDriverBase<RMQBQ.MQTTOptions> {
   readonly #store: Map<string, { count: number; expires: DateTime }> = new Map()
   readonly #client: Client

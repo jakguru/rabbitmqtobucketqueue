@@ -14,7 +14,8 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "removeComments": false
   },
   "ts-node": {
     "transpileOnly": true

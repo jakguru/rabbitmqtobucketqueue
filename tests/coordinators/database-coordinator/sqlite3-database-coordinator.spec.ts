@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { DatabaseCoordinator } from '../../../src/coordinators/database'
 import { sqlite3ConnectionOptions } from '../../common'
 
-test.group('DatabaseCoordinator - SQLite3', () => {
+test.group('DatabaseCoordinator - SQLite3', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'database', 'sqlite3']))
   test('balance returns correct value', async ({ assert }) => {
     const coordinator = new DatabaseCoordinator('test-queue', 5, 1000, sqlite3ConnectionOptions)
     await coordinator.reset()

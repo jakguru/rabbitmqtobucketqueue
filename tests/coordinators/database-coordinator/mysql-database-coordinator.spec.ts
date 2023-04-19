@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { DatabaseCoordinator } from '../../../src/coordinators/database'
 import { mysqlConnectionOptions } from '../../common'
 
-test.group('DatabaseCoordinator - MySQL', () => {
+test.group('DatabaseCoordinator - MySQL', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'database', 'mysql']))
   test('balance returns correct value', async ({ assert }) => {
     const coordinator = new DatabaseCoordinator('test-queue', 5, 1000, mysqlConnectionOptions)
     await coordinator.reset()

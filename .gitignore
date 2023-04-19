@@ -5,3 +5,4 @@ coverage
 .vscode
 .idea
 tests/*.sqlite3
+tests/debug.txt

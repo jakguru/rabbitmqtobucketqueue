@@ -1,6 +1,7 @@
 import { CoordinatorDriverBase } from '../../abstracts'
 import { Redis } from 'ioredis'
 import { v4 as uuidv4 } from 'uuid'
+import merge from 'lodash.merge'
 import type * as RMQBQ from 'contracts/RMQBQ'
 
 /**
@@ -20,7 +21,14 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
         `Redis requires intervals in round seconds represented as milliseconds. ${this.$interval} is not divisible by 1000.`
       )
     }
-    this.#client = new Redis(options)
+    this.#client = new Redis(
+      merge({}, options, { autoResubscribe: false, lazyConnect: true, maxRetriesPerRequest: 0 })
+    )
+    /**
+     * @remarks Here we are intentionally ignoring errors which are caused outside of a specific request.
+     * Any requests made to the client have specific error handlers hooked to them.
+     */
+    this.#client.on('error', () => {})
   }
 
   /**
@@ -34,6 +42,9 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
    * {@inheritDoc CoordinatorDriverBase.increment}
    */
   public async increment(count: number): Promise<void> {
+    // this.#client.once('error', (error) => {
+    //   throw error
+    // })
     const key = [this.$queue, uuidv4()].join(':')
     await this.#client.setex(key, this.$interval / 1000, count)
     return
@@ -43,6 +54,9 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
    * {@inheritDoc CoordinatorDriverBase.reset}
    */
   public async reset(): Promise<void> {
+    // this.#client.once('error', (error) => {
+    //   throw error
+    // })
     const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
     const keys = await this.#client.keys(pattern)
     if (keys.length === 0) {
@@ -52,6 +66,9 @@ export class RedisCoordinator extends CoordinatorDriverBase<RMQBQ.RedisOptions> 
   }
 
   async #getBalance(): Promise<number> {
+    // this.#client.once('error', (error) => {
+    //   throw error
+    // })
     const pattern = `${this.$queue}:[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-4[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[89ABab][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]`
     const keys = await this.#client.keys(pattern)
     if (keys.length === 0) {

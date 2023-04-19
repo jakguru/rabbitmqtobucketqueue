@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { RedisCoordinator } from '../../src/coordinators/redis'
 import { redisConnectionOptions } from '../common'
 
-test.group('RedisCoordinator', () => {
+test.group('RedisCoordinator', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'redis']))
   test('constructor sets properties correctly', ({ assert }) => {
     const coordinator = new RedisCoordinator('test-queue', 5, 1000, redisConnectionOptions)
 

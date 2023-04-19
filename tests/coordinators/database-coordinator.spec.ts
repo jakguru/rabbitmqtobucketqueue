@@ -2,7 +2,8 @@ import { test } from '@japa/runner'
 import { DatabaseCoordinator } from '../../src/coordinators/database'
 import { postgresConnectionOptions } from '../common'
 
-test.group('DatabaseCoordinator', () => {
+test.group('DatabaseCoordinator', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'database']))
   test('is able to create the required table', async ({ assert }) => {
     try {
       await DatabaseCoordinator.prepare(postgresConnectionOptions)

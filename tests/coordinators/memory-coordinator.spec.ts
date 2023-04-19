@@ -1,7 +1,8 @@
 import { test } from '@japa/runner'
 import { MemoryCoordinator } from '../../src/coordinators/memory'
 
-test.group('MemoryCoordinator', () => {
+test.group('MemoryCoordinator', (group) => {
+  group.tap((test) => test.tags(['coordinators', 'memory']))
   test('constructor sets properties correctly', ({ assert }) => {
     const coordinator = new MemoryCoordinator('test-queue', 5, 1000)
 
