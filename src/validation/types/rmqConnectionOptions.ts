@@ -1,7 +1,12 @@
 import { ValidationType } from '../../../contracts/validation'
 
 const rmqConnectionOptions: ValidationType = (value: any) => {
+  if ('object' !== typeof value || null === value) {
+    return 'must be an object'
+  }
   const validate = require('validate.js')
+  validate.capitalize = (v) => v
+  validate.prettify = (v) => v
   validate['options'] = { format: 'flat' }
   const constraints = {
     protocol: {
@@ -43,7 +48,7 @@ const rmqConnectionOptions: ValidationType = (value: any) => {
         onlyInteger: true,
         greaterThanOrEqualTo: 0,
       },
-      presence: true,
+      presence: false,
     },
     heartbeat: {
       type: 'integer',
@@ -53,7 +58,7 @@ const rmqConnectionOptions: ValidationType = (value: any) => {
         onlyInteger: true,
         greaterThanOrEqualTo: 0,
       },
-      presence: true,
+      presence: false,
     },
     vhost: {
       type: 'string',
@@ -65,9 +70,9 @@ const rmqConnectionOptions: ValidationType = (value: any) => {
     if (!Array.isArray(validatorErrors) || validatorErrors.length === 0) {
       return true
     }
-    return validatorErrors
+    return validatorErrors.join(', ')
   } catch (errors) {
-    return errors
+    return errors.join(', ')
   }
 }
 export default rmqConnectionOptions

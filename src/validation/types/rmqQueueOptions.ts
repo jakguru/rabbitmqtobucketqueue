@@ -1,7 +1,12 @@
 import { ValidationType } from '../../../contracts/validation'
 
 const rmqQueueOptions: ValidationType = (value: any) => {
+  if ('object' !== typeof value || null === value) {
+    return 'must be an object'
+  }
   const validate = require('validate.js')
+  validate.capitalize = (v) => v
+  validate.prettify = (v) => v
   validate['options'] = { format: 'flat' }
   const constraints = {
     exclusive: {
@@ -74,9 +79,9 @@ const rmqQueueOptions: ValidationType = (value: any) => {
     if (!Array.isArray(validatorErrors) || validatorErrors.length === 0) {
       return true
     }
-    return validatorErrors
+    return validatorErrors.join(', ')
   } catch (errors) {
-    return errors
+    return errors.join(', ')
   }
 }
 export default rmqQueueOptions

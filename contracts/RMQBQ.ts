@@ -3,8 +3,10 @@ import type { CoordinatorDriver } from './CoordinatorDriver'
 import type { RedisOptions as IORedisOptions } from 'ioredis'
 import type { IClientOptions as MQTTBaseOptions } from 'mqtt'
 import type { Knex } from 'knex'
-import type { LoggerOptions } from 'pino'
+import type { LoggerOptions as PinoLoggerOptions } from 'pino'
 import type amqplib from 'amqplib'
+
+export interface LoggerOptions extends PinoLoggerOptions {}
 
 export interface RedisOptions extends IORedisOptions {}
 
@@ -213,4 +215,3 @@ export type RabbitMQToBucketQueueEmitterEvent = {
 }
 
 export type { IClientOptions as MQTTBaseOptions } from 'mqtt'
-export type { LoggerOptions } from 'pino'

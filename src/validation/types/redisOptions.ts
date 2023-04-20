@@ -1,7 +1,12 @@
 import { ValidationType } from '../../../contracts/validation'
 
 const redisOptions: ValidationType = (value: any) => {
+  if ('object' !== typeof value || null === value) {
+    return 'must be an object'
+  }
   const validate = require('validate.js')
+  validate.capitalize = (v) => v
+  validate.prettify = (v) => v
   validate['options'] = { format: 'flat' }
   const constraints = {
     host: function (_value, attributes) {
@@ -51,7 +56,11 @@ const redisOptions: ValidationType = (value: any) => {
       }
     },
     path: function (_value, attributes) {
-      if (attributes.host && attributes.port && attributes.db) {
+      if (
+        'undefined' !== typeof attributes.host &&
+        'undefined' !== typeof attributes.port &&
+        'undefined' !== typeof attributes.db
+      ) {
         return undefined
       }
       return {
@@ -67,9 +76,9 @@ const redisOptions: ValidationType = (value: any) => {
     if (!Array.isArray(validatorErrors) || validatorErrors.length === 0) {
       return true
     }
-    return validatorErrors
+    return validatorErrors.join(', ')
   } catch (errors) {
-    return errors
+    return errors.join(', ')
   }
 }
 export default redisOptions

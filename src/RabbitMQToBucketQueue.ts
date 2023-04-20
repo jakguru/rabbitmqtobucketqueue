@@ -511,22 +511,28 @@ export class RabbitMQToBucketQueue<T = Buffer>
     }
     const validationConstraints = {
       queue: {
+        exists: {
+          message: 'is required',
+        },
         presence: {
           message: 'is required',
         },
         type: 'string',
       },
       rmqChannel: {
-        presence: false,
         type: 'queue',
+        queue: true,
       },
       rmqQueueType: function (_value, attributes) {
         if (attributes.rmqChannel) {
           return {}
         }
         return {
-          presence: { message: 'is required when rmqChannel is not provided' },
+          exists: { message: 'is required when rmqChannel is not provided' },
           inclusion: ['queue', 'confirmQueue'],
+          presence: {
+            message: 'is required',
+          },
           type: 'string',
         }
       },
@@ -535,30 +541,34 @@ export class RabbitMQToBucketQueue<T = Buffer>
           return {}
         }
         return {
-          presence: { message: 'is required when rmqChannel is not provided' },
+          exists: { message: 'is required when rmqChannel is not provided' },
           type: 'rmqConnectionOptions',
+          rmqConnectionOptions: true,
         }
       },
-      rmqQueueOptionsType: function (_value, attributes) {
+      rmqQueueOptions: function (_value, attributes) {
         if (attributes.rmqChannel) {
           return {}
         }
         return {
-          presence: { message: 'is required when rmqChannel is not provided' },
+          exists: { message: 'is required when rmqChannel is not provided' },
           type: 'rmqQueueOptionsType',
+          rmqQueueOptionsType: true,
         }
       },
       coordinator: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'rmqCoordinatorType',
+        rmqCoordinatorType: true,
       },
       redisOptions: function (_value, attributes) {
         if (attributes.coordinator === 'redis') {
           return {
-            presence: { message: 'is required when coordinator is redis' },
+            exists: { message: 'is required when coordinator is redis' },
             type: 'redisOptions',
+            redisOptions: true,
           }
         }
         return {}
@@ -566,8 +576,9 @@ export class RabbitMQToBucketQueue<T = Buffer>
       mqttOptions: function (_value, attributes) {
         if (attributes.coordinator === 'mqtt') {
           return {
-            presence: { message: 'is required when coordinator is mqtt' },
+            exists: { message: 'is required when coordinator is mqtt' },
             type: 'mqttOptions',
+            mqttOptions: true,
           }
         }
         return {}
@@ -575,26 +586,28 @@ export class RabbitMQToBucketQueue<T = Buffer>
       databaseOptions: function (_value, attributes) {
         if (attributes.coordinator === 'database') {
           return {
-            presence: { message: 'is required when coordinator is database' },
+            exists: { message: 'is required when coordinator is database' },
             type: 'databaseOptions',
+            databaseOptions: true,
           }
         }
         return {}
       },
       debug: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'boolean',
       },
       loggerOptions: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'loggerOptions',
+        loggerOptions: true,
       },
       interval: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'integer',
@@ -606,7 +619,7 @@ export class RabbitMQToBucketQueue<T = Buffer>
         },
       },
       maxBatch: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'integer',
@@ -619,13 +632,13 @@ export class RabbitMQToBucketQueue<T = Buffer>
         },
       },
       autostart: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'boolean',
       },
       chunkSize: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'integer',
@@ -638,48 +651,28 @@ export class RabbitMQToBucketQueue<T = Buffer>
         },
       },
       discardOnDeserializeError: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'boolean',
       },
       discardOnValidationError: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'boolean',
       },
       discardOnInvalid: {
-        presence: {
+        exists: {
           message: 'is required',
         },
         type: 'boolean',
       },
-      onSpill: function (_value, attributes) {
-        if ('function' === typeof attributes.onItem) {
-          return {
-            type: 'undefined',
-          }
-        }
-        return {
-          presence: {
-            message: 'or "onItem" is required',
-          },
-          type: 'callable',
-        }
+      onSpill: {
+        type: 'callable',
       },
-      onItem: function (_value, attributes) {
-        if ('function' === typeof attributes.onSpill) {
-          return {
-            type: 'undefined',
-          }
-        }
-        return {
-          presence: {
-            message: 'or "onSpill" is required',
-          },
-          type: 'callable',
-        }
+      onItem: {
+        type: 'callable',
       },
     }
     try {

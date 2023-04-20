@@ -1,9 +1,20 @@
 import { ValidationType } from '../../../contracts/validation'
 import databaseConnectionOptions from './databaseConnectionOptions'
 const databaseOptions: ValidationType = (value: any) => {
+  if ('object' !== typeof value || null === value) {
+    return 'must be an object'
+  }
   const validate = require('validate.js')
+  validate.capitalize = (v) => v
+  validate.prettify = (v) => v
   validate['options'] = { format: 'flat' }
-  validate.validators.type.types['databaseConnectionOptions'] = databaseConnectionOptions
+  validate.validators.type.types['databaseConnectionOptions'] = (value) => {
+    return 'string' !== typeof databaseConnectionOptions(value)
+  }
+  validate.validators.databaseConnectionOptions = (value) => {
+    const res = databaseConnectionOptions(value)
+    return 'string' === typeof res ? res : undefined
+  }
   const constraints = {
     table: {
       presence: true,
@@ -20,6 +31,7 @@ const databaseOptions: ValidationType = (value: any) => {
     connection: {
       presence: true,
       type: 'databaseConnectionOptions',
+      databaseConnectionOptions: true,
     },
   }
   try {
@@ -27,9 +39,9 @@ const databaseOptions: ValidationType = (value: any) => {
     if (!Array.isArray(validatorErrors) || validatorErrors.length === 0) {
       return true
     }
-    return validatorErrors
+    return validatorErrors.join(', ')
   } catch (errors) {
-    return errors
+    return errors.join(', ')
   }
 }
 export default databaseOptions
