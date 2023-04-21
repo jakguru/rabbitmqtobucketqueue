@@ -3,21 +3,58 @@ import { RabbitMQToBucketQueue } from '../../src/RabbitMQToBucketQueue'
 import { ValidationError } from '../../src/validation/ValidationError'
 import { GetBadValuesForKey } from './variations'
 import { baseConfig, ResolveConfig, variationConfigurations } from './configurations'
+import * as options from '../common'
+import amqplib from 'amqplib'
 
 test.group('RabbitMQToBucketQueue', (group) => {
+  let connection: undefined | amqplib.Connection
   const errors = new Set()
-  group.tap((test) => test.tags(['rmqbq']))
-  group.setup(async () => {
-    await Promise.all([baseConfig.connection, baseConfig.channel, baseConfig.confirmChannel])
+  const connections: any[] = []
+  group.tap((test) => {
+    test.tags(['rmqbq'])
+    test.timeout(30000)
   })
-  group.teardown(async () => {
-    const [connection] = await Promise.all([
+  group.setup(async () => {
+    const [conn] = await Promise.all([
       baseConfig.connection,
       baseConfig.channel,
       baseConfig.confirmChannel,
     ])
-    await connection.close()
-    console.log(errors)
+    connection = conn
+    connection.on('error', () => {})
+  })
+  group.each.setup(async () => {
+    await new Promise((resolve) => {
+      baseConfig.connection = amqplib.connect(
+        Object.assign({}, options.amqplibConnectionOptions, {
+          heartbeat: 60,
+        })
+      )
+      baseConfig.connection.then((connection) => {
+        baseConfig.channel = connection.createChannel()
+        baseConfig.confirmChannel = connection.createConfirmChannel()
+        baseConfig.config.rmqChannel = baseConfig.channel
+        baseConfig.config.rmqConfirmChannel = baseConfig.confirmChannel
+        resolve(undefined)
+      })
+    })
+    const [conn] = await Promise.all([
+      baseConfig.connection,
+      baseConfig.channel,
+      baseConfig.confirmChannel,
+    ])
+    connection = conn
+    connection.on('error', () => {})
+  })
+  group.each.teardown(async () => {
+    if (connection) {
+      try {
+        connection.close()
+      } catch (error) {
+        console.log('Failed to close connection:')
+        console.log(error)
+      }
+    }
   })
 
   test('Validation Errors are thrown when there is no configuration, or the configuration is not an object', async ({
@@ -25,7 +62,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
   }) => {
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize()
+      connections.push(await RabbitMQToBucketQueue.initialize())
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -33,7 +70,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(true)
+      connections.push(await RabbitMQToBucketQueue.initialize(true))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -41,7 +78,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(0)
+      connections.push(await RabbitMQToBucketQueue.initialize(0))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -49,7 +86,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize('test')
+      connections.push(await RabbitMQToBucketQueue.initialize('test'))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -57,7 +94,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize([])
+      connections.push(await RabbitMQToBucketQueue.initialize([]))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -65,7 +102,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(null)
+      connections.push(await RabbitMQToBucketQueue.initialize(null))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -73,7 +110,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(undefined)
+      connections.push(await RabbitMQToBucketQueue.initialize(undefined))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -81,7 +118,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(void 0)
+      connections.push(await RabbitMQToBucketQueue.initialize(void 0))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -89,7 +126,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
     }
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(() => {})
+      connections.push(await RabbitMQToBucketQueue.initialize(() => {}))
       assert.fail('Should have thrown an error')
     } catch (error) {
       assert.instanceOf(error, ValidationError)
@@ -103,9 +140,13 @@ test.group('RabbitMQToBucketQueue', (group) => {
     const config = await ResolveConfig(baseConfig.config)
     try {
       // @ts-ignore
-      await RabbitMQToBucketQueue.initialize(config)
+      connections.push(await RabbitMQToBucketQueue.initialize(config))
       assert.fail('Should have thrown an error')
     } catch (error) {
+      if (!(error instanceof ValidationError)) {
+        console.log(error)
+        assert.fail('Should have thrown a validation error')
+      }
       assert.instanceOf(error, ValidationError)
       error.errors.forEach((e) => errors.add(e))
       assert.deepEqual(error.errors, ['onSpill and onItem cannot be defined at the same time'])
@@ -120,9 +161,13 @@ test.group('RabbitMQToBucketQueue', (group) => {
         const toTest: any = {}
         try {
           // @ts-ignore
-          await RabbitMQToBucketQueue.initialize(toTest)
+          connections.push(await RabbitMQToBucketQueue.initialize(toTest))
           assert.fail('Should have thrown an error')
         } catch (error) {
+          if (!(error instanceof ValidationError)) {
+            console.log(error)
+            assert.fail('Should have thrown a validation error')
+          }
           assert.instanceOf(error, ValidationError)
           error.errors.forEach((e) => errors.add(e))
           assert.deepEqual(error.errors, [
@@ -138,6 +183,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
             try {
               // @ts-ignore
               const instance = await RabbitMQToBucketQueue.initialize(Object.assign({}, toTest))
+              connections.push(instance)
               if (Object.keys(toTest).length !== Object.keys(full).length) {
                 assert.fail('Should have thrown an error')
               } else {
@@ -147,6 +193,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
             } catch (error) {
               if (!(error instanceof ValidationError)) {
                 console.log(error)
+                assert.fail('Should have thrown a validation error')
               }
               assert.instanceOf(error, ValidationError)
               error.errors.forEach((e) => errors.add(e))
@@ -156,6 +203,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
           try {
             // @ts-ignore
             const instance = await RabbitMQToBucketQueue.initialize(Object.assign({}, toTest))
+            connections.push(instance)
             if (Object.keys(toTest).length !== Object.keys(full).length) {
               assert.fail('Should have thrown an error')
             } else {
@@ -165,6 +213,7 @@ test.group('RabbitMQToBucketQueue', (group) => {
           } catch (error) {
             if (!(error instanceof ValidationError)) {
               console.log(error)
+              assert.fail('Should have thrown a validation error')
             }
             assert.instanceOf(error, ValidationError)
             error.errors.forEach((e) => errors.add(e))

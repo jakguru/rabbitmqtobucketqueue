@@ -3,10 +3,12 @@
  */
 export class ReEnquableError extends Error {
   readonly #reenqueue: boolean
-  constructor(message: string, reenqueue: boolean = true) {
+  readonly #countsTowardBalance: boolean
+  constructor(message: string, reenqueue: boolean = true, countsTowardBalance: boolean = true) {
     super(message)
     Object.setPrototypeOf(this, ReEnquableError.prototype)
     this.#reenqueue = reenqueue
+    this.#countsTowardBalance = countsTowardBalance
   }
 
   /**
@@ -22,5 +24,12 @@ export class ReEnquableError extends Error {
    */
   public get requeue(): boolean {
     return this.#reenqueue
+  }
+
+  /**
+   * If the messages should count towards the balance
+   */
+  public get countsTowardBalance(): boolean {
+    return this.#countsTowardBalance
   }
 }

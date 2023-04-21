@@ -21,7 +21,11 @@ export interface DatabaseOptions extends Knex.Config {
   client: 'pg' | 'sqlite3' | 'mssql' | 'mysql' | 'mysql2' | 'oracledb'
 }
 
+export type DefaultCoordinatorOptions = RedisOptions | MQTTOptions | DatabaseOptions | undefined
+
 export interface RabbitMQConnectionOptions extends amqplib.Options.Connect {}
+
+export interface RabbitMQConnection extends amqplib.Connection {}
 
 export interface RabbitMQQueue extends amqplib.Channel {}
 
@@ -161,6 +165,18 @@ export interface EventHandlers<T = any> {
    * @returns A void or a promise resolving to void.
    */
   error: (error: Error, info?: RabbitMQMessage | T[] | T | any | any[]) => void | Promise<void>
+  /**
+   * Handles the `fatal` event, which is triggered when the queue encounters a fatal error which prevents it from running.
+   * @param error The error which was encountered.
+   * @returns A void or a promise resolving to void.
+   */
+  fatal: (error: Error) => void | Promise<void>
+  /**
+   * Handles the `died` event, which is triggered after a fatal event occurs and the queue is no longer running.
+   * @param error The error which caused the queue to die.
+   * @returns A void or a promise resolving to void.
+   */
+  died: (error: Error) => void | Promise<void>
   /**
    * Handles the `finish` event, which is triggered when the queue is finished (completely emptied).
    * @returns A void or a promise resolving to void.

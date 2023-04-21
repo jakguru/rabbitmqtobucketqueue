@@ -3,10 +3,10 @@ import amqplib from 'amqplib'
 import { MakeConfigForCoordinator } from './variations'
 
 export class BaseConfig {
-  public readonly connection: Promise<amqplib.Connection>
+  public connection: Promise<amqplib.Connection>
   public channel: Promise<amqplib.Channel>
   public confirmChannel: Promise<amqplib.ConfirmChannel>
-  public readonly config: any = {
+  public config: any = {
     queue: 'test-queue',
     debug: false,
     rmqChannel: undefined as undefined | Promise<amqplib.Channel | amqplib.ConfirmChannel>,
@@ -42,7 +42,11 @@ export class BaseConfig {
   }
 
   constructor() {
-    this.connection = amqplib.connect(options.amqplibConnectionOptions)
+    this.connection = amqplib.connect(
+      Object.assign({}, options.amqplibConnectionOptions, {
+        heartbeat: 60,
+      })
+    )
     this.connection.then((connection) => {
       this.channel = connection.createChannel()
       this.confirmChannel = connection.createConfirmChannel()

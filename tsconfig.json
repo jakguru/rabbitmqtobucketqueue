@@ -21,13 +21,20 @@
     "transpileOnly": true
   },
   "typedocOptions": {
+    "plugin": [
+      "typedoc-plugin-coverage"
+    ],
+    "coverageLabel": "Covers",
+    "sidebarLinks": {
+      "Github Repository": "https://github.com/jakguru/rabbitmqtobucketqueue",
+    },
     "hideGenerator": true,
     "includeVersion": true,
     "searchInComments": true,
     "entryPoints": ["index.ts"],
     "out": "docs",
     "name": "RabbitMQ to Bucket Queue",
-    "readme": "README.md",
+    "readme": "API-README.md",
     "theme": "default",
     "excludePrivate": true,
     "excludeProtected": true,

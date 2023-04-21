@@ -1,5 +1,7 @@
 # RabbitMQ to Bucket Queue
 
+![Doc Coverage Badge](./coverage.svg)
+
 A RabbitMQ Consumer which limits the rate of consumption by consuming small batches of messages periodically and releasing them. Designed to enforce rate limits when working with external APIs.
 It is also able to coordinate with other instances of itself to ensure that the rate limit is not exceeded using one of the following drivers:
 
@@ -7,7 +9,7 @@ It is also able to coordinate with other instances of itself to ensure that the 
 * MQTT (using [MQTT.js](https://www.npmjs.com/package/mqtt) or compatible client)
 * Database (using [Knex.js](https://www.npmjs.com/package/knex) or compatible client)
 
-You can also create your own driver (implementing the `CoordinatorDriver` interface)
+You can also create your own driver which extends the [CoordinatorDriverBase](./classes/CoordinatorDriverBase.html) class.
 
 ## Why RabbitMQ and not ...?
 
@@ -59,5 +61,3 @@ RabbitMQToBucketQueue.initialize().then((instance) => {
 ```
 
 ## Configuration
-
-To find a list of all of the Error Messages related to configuration, see [Error Messages](VALIDATION_ERRORS.md)

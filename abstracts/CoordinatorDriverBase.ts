@@ -1,4 +1,5 @@
 import { CoordinatorDriver } from '../contracts/CoordinatorDriver'
+import type * as RMQBQ from 'contracts/RMQBQ'
 
 /**
  * The `CoordinatorDriverBase` class is an abstract class which is extended by all Coordinator Drivers.
@@ -97,5 +98,48 @@ export abstract class CoordinatorDriverBase<CoordinatorDriverOptionsType = undef
     const instance = new this(queue, maxBatch, interval, options)
     await instance.ready()
     return instance
+  }
+
+  /**
+   * Prepare the coordinator for use. Should be extended by the coordinator if needed.
+   * @param options The options for the coordinator driver.
+   * @param expectClean If true, the method should throw an error if the coordinator is not clean.
+   * @returns A promise which resolves to void if the coordinator is clean, or rejects if it is not but is expected to be.
+   */
+  public static async prepare(
+    options: RMQBQ.DefaultCoordinatorOptions,
+    expectClean: boolean = false
+  ): Promise<void> {
+    const dirty = await this.prepared(options)
+    if (dirty && expectClean) {
+      throw new Error('Coordinator is not clean')
+    }
+    return
+  }
+
+  /**
+   * Clean up the coordinator after use. Should be extended by the coordinator if needed.
+   * @param options The options for the coordinator driver.
+   * @param expectDirty If true, the method should throw an error if the coordinator is not dirty.
+   * @returns A promise which resolves to void if the coordinator is dirty, or rejects if it is not but is expected to be.
+   */
+  public static async cleanup(
+    options: RMQBQ.DefaultCoordinatorOptions,
+    expectDirty: boolean = false
+  ): Promise<void> {
+    const dirty = await this.prepared(options)
+    if (!dirty && expectDirty) {
+      throw new Error('Coordinator is clean')
+    }
+    return
+  }
+
+  /**
+   * Check to see if the coordinator has been prepared. Should be extended by the coordinator if needed.
+   * @param _options The options for the coordinator driver.
+   * @returns A promise which resolves to true if the coordinator is prepared, or false if it is not.
+   */
+  public static async prepared(_options: RMQBQ.DefaultCoordinatorOptions): Promise<boolean> {
+    return false
   }
 }

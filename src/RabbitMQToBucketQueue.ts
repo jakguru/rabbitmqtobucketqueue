@@ -81,6 +81,18 @@ export class RabbitMQToBucketQueue<T = Buffer>
    */
   public static readonly error: RMQBQ.RabbitMQToBucketQueueEmitterEvent['error'] = 'error'
   /**
+   * The `fatal` event, which is triggered when an fatal error occurs.
+   * @see {@link EventHandlers.fatal | `fatal` Event Handler}
+   * @event
+   */
+  public static readonly fatal: RMQBQ.RabbitMQToBucketQueueEmitterEvent['fatal'] = 'fatal'
+  /**
+   * The `died` event, which is triggered when an died error occurs.
+   * @see {@link EventHandlers.died | `died` Event Handler}
+   * @event
+   */
+  public static readonly died: RMQBQ.RabbitMQToBucketQueueEmitterEvent['died'] = 'died'
+  /**
    * The `spill` event, which is triggered when the there is a balance of items which can be spilled.
    * @see {@link EventHandlers.invalid | `invalid` Event Handler}
    * @event
@@ -110,6 +122,7 @@ export class RabbitMQToBucketQueue<T = Buffer>
   #deserializeItem?: RMQBQ.ItemDeserializer<T>
   #logger: Logger
   #booted: boolean = false
+  #connection: RMQBQ.RabbitMQConnection | undefined = undefined
   #channel: RMQBQ.RabbitMQQueue | RMQBQ.RabbitMQConfirmQueue
   #coordinator: CoordinatorDriver
   #immediate: NodeJS.Immediate | undefined
@@ -188,7 +201,12 @@ export class RabbitMQToBucketQueue<T = Buffer>
 
   /**
    * Shuts down all connections made by the Bucket Queue instance.
-   * @remarks This method should allow the process to exit gracefully.
+   * @remarks
+   * This method should allow the process to exit gracefully.
+   *
+   * **Special Note:**
+   * If the connection was *not* established by the Bucket Queue instance, you will need to close that connection seperatly.
+   *
    * @param purge A boolean indicating whether the queue should be purged before closing.
    */
   public async shutdown(purge: boolean = false): Promise<void> {
@@ -199,11 +217,14 @@ export class RabbitMQToBucketQueue<T = Buffer>
       await this.purge()
     }
     try {
-      await this.#channel.close()
+      this.#channel.close()
     } catch (error) {
       if (error.message !== 'Channel closed') {
         throw error
       }
+    }
+    if (this.#connection) {
+      this.#connection.close()
     }
     await this.#coordinator.shutdown()
   }
@@ -258,6 +279,9 @@ export class RabbitMQToBucketQueue<T = Buffer>
         rmqQueueOptions: options.rmqQueueOptions as RMQBQ.RabbitMQQueueOptions,
       })
     }
+    this.#channel.on('error', (error) => {
+      this.#handleFatalError(error)
+    })
     if (options.coordinator instanceof CoordinatorDriverBase) {
       this.#coordinator = options.coordinator
     } else {
@@ -303,7 +327,13 @@ export class RabbitMQToBucketQueue<T = Buffer>
   }
 
   async #tick() {
-    const balance = await this.#coordinator.balance
+    let balance: number
+    try {
+      balance = await this.#coordinator.balance
+    } catch (error) {
+      this.#handleFatalError(error)
+      return
+    }
     this.#storeAndEmit('tick', this.#getTimestamp(), balance)
     if (!this.#corked && balance > 0) {
       this.#logger.info(`Starting to Spill ${balance} items`)
@@ -385,9 +415,23 @@ export class RabbitMQToBucketQueue<T = Buffer>
           try {
             await this.#doSpill(chunk)
             await this.#doAckAll(chunk.map((deserializedMessage) => deserializedMessage.message))
+            try {
+              await this.#coordinator.increment(chunk.length)
+            } catch (error) {
+              this.#handleFatalError(error)
+              return
+            }
             this.#logger.info(`Spill Succeeded for ${chunk.length} items`)
           } catch (error) {
             this.#storeAndEmit('error', error, chunkItems)
+            if (error instanceof ReEnquableError && error.countsTowardBalance === true) {
+              try {
+                await this.#coordinator.increment(chunk.length)
+              } catch (error) {
+                this.#handleFatalError(error)
+                return
+              }
+            }
             const requeue = error instanceof ReEnquableError && error.reenqueue === true
             await this.#doNackAll(
               chunk.map((deserializedMessage) => deserializedMessage.message),
@@ -407,8 +451,22 @@ export class RabbitMQToBucketQueue<T = Buffer>
               try {
                 await this.#doItem(deserializedMessage.item)
                 await this.#doAck(deserializedMessage.message)
+                try {
+                  await this.#coordinator.increment(1)
+                } catch (error) {
+                  this.#handleFatalError(error)
+                  return
+                }
                 this.#logger.info(`Spill Succeeded for item ${inspect(deserializedMessage.item)}`)
               } catch (error) {
+                if (error instanceof ReEnquableError && error.countsTowardBalance === true) {
+                  try {
+                    await this.#coordinator.increment(1)
+                  } catch (error) {
+                    this.#handleFatalError(error)
+                    return
+                  }
+                }
                 this.#storeAndEmit('error', error, deserializedMessage.item)
                 const requeue = error instanceof ReEnquableError && error.reenqueue === true
                 await this.#doNack(deserializedMessage.message, requeue)
@@ -423,21 +481,25 @@ export class RabbitMQToBucketQueue<T = Buffer>
         }
       }
     }
-    const endListSize = await this.#coordinator.balance
-    if (balance !== endListSize) {
-      if (endListSize < this.#maxBatch) {
-        this.#storeAndEmit('drain')
-        this.#logger.info(`Queue Drained and is able to accept new items`)
+    try {
+      const endListSize = await this.#coordinator.balance
+      if (balance !== endListSize) {
+        if (endListSize < this.#maxBatch) {
+          this.#storeAndEmit('drain')
+          this.#logger.info(`Queue Drained and is able to accept new items`)
+        }
+        if (endListSize === 0) {
+          this.#storeAndEmit('finish')
+          this.#logger.info(`Queue Emptied and is able to accept new items`)
+        }
       }
-      if (endListSize === 0) {
-        this.#storeAndEmit('finish')
-        this.#logger.info(`Queue Emptied and is able to accept new items`)
+      if (!this.#corked) {
+        this.#immediate = setImmediate(() => {
+          this.#tick()
+        })
       }
-    }
-    if (!this.#corked) {
-      this.#immediate = setImmediate(() => {
-        this.#tick()
-      })
+    } catch (error) {
+      this.#handleFatalError(error)
     }
   }
 
@@ -475,6 +537,32 @@ export class RabbitMQToBucketQueue<T = Buffer>
     if ('function' === typeof this.#onItem) {
       await this.#onItem(items)
     }
+  }
+
+  async #handleFatalError(error: Error): Promise<void> {
+    this.#storeAndEmit('fatal', error)
+    this.cork()
+    if (this.#channel) {
+      try {
+        this.#channel.close()
+      } catch (e) {
+        // nothing to do at this point. We're already shutting it down
+        this.#logger.error(`Failed to close channel`)
+        this.#storeAndEmit('error', e)
+      }
+    }
+    if (this.#connection) {
+      this.#connection.close()
+    }
+    if (this.#coordinator) {
+      try {
+        await this.#coordinator.shutdown()
+      } catch (e) {
+        this.#logger.error(`Failed to shut down coordinator`)
+        this.#storeAndEmit('error', e)
+      }
+    }
+    this.#storeAndEmit('died', error)
   }
 
   #getTimestamp() {
@@ -529,7 +617,10 @@ export class RabbitMQToBucketQueue<T = Buffer>
         }
         return {
           exists: { message: 'is required when rmqChannel is not provided' },
-          inclusion: ['queue', 'confirmQueue'],
+          inclusion: {
+            within: ['queue', 'confirmQueue'],
+            message: 'must be either "queue" or "confirmQueue"',
+          },
           presence: {
             message: 'is required',
           },
@@ -703,12 +794,15 @@ export class RabbitMQToBucketQueue<T = Buffer>
     rmqConnectionOptions,
     rmqQueueOptions,
   }: RMQBQ.GetRabbitMQQueueOptions): Promise<RMQBQ.RabbitMQQueue | RMQBQ.RabbitMQConfirmQueue> {
-    const connection = await amqplib.connect(rmqConnectionOptions)
+    this.#connection = await amqplib.connect(rmqConnectionOptions)
+    this.#connection.on('error', (error) => {
+      this.#handleFatalError(error)
+    })
     let channel: Channel
     if (rmqQueueType === 'confirmChannel') {
-      channel = await connection.createConfirmChannel()
+      channel = await this.#connection.createConfirmChannel()
     } else {
-      channel = await connection.createChannel()
+      channel = await this.#connection.createChannel()
     }
     await channel.assertQueue(queue, rmqQueueOptions)
     return channel

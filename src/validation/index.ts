@@ -10,7 +10,6 @@ import loggerOptions from './types/loggerOptions'
 import callable from './types/callable'
 import undefinedType from './types/undefined'
 import validate from 'validate.js'
-// import { inspect } from 'util'
 
 import type { ValidationType, ValidationMessage } from '../../contracts/validation'
 // @ts-ignore
