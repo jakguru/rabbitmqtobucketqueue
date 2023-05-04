@@ -1,19 +1,19 @@
 export * from './src/RabbitMQToBucketQueue'
 export * from './src/CoordinatorTestFailedError'
+export * from './src/ToRabbitMQBucketQueue'
+export * from './src/rabbitmq/'
 export * from './contracts'
 export * from './abstracts'
 export * from './src/coordinators'
+export * from './src/encryption'
 export * from './extendables'
 
 /**
- * @todo Create an exportable coordinator server + driver based on the memory driver which can be used instead of database-based solutions.
- * Should be able to be hooked into an existing server (like socket.io does), or as a standalone server.
- * Should *not* be an HTTP server, but rather a TCP server.
+ * @todo Create a coordinator client for the exportable coordinator server + driver based on the memory driver which can be used instead of database-based solutions.
  */
 
 /**
- * @todo Create an exportable ToRabbitMQBucketQueue class which can be used to send items to a RabbitMQ queue.
- * It should use a confirmChannel to allow for checking if the message was delivered successfully.
- * Should use similar configuration options to the RabbitMQToBucketQueue class for configuration, but does not require a coordinator
- * or any information related to rate-limiting
+ * @todo Create a wrapper which wraps both the publisher and the consumer and allows for a request to receive a promised response.
+ * Should be cross-process compatible, allowing for a publisher and consumer to be on different machines, thus meaning that an event coordinator is required.
+ * The event coordinator should be something like a private socket.io which encrypts messages in both directions.
  */

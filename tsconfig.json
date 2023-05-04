@@ -31,7 +31,7 @@
     "hideGenerator": true,
     "includeVersion": true,
     "searchInComments": true,
-    "entryPoints": ["index.ts"],
+    "entryPoints": ["index.ts", "lite.ts"],
     "out": "docs",
     "name": "RabbitMQ to Bucket Queue",
     "readme": "API-README.md",

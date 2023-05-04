@@ -1,3 +1,4 @@
+/// <reference path="./rabbitmq/index.ts" />
 import { EventEmitter } from 'events'
 import { inspect } from 'util'
 import merge from 'lodash.merge'

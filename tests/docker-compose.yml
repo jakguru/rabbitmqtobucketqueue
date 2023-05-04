@@ -44,6 +44,15 @@ services:
       - "MYSQL_RANDOM_ROOT_PASSWORD=yes"
     ports:
       - "${MYSQL_PORT}:3306"
+  lite:
+    build: ../
+    command: npm run lite:serve
+    ports: 
+      - "${LITE_PORT}:6363"
+    environment:
+      LITE_SECRET: iaamverysecretkey
+      LITE_PATH: /rmqbqc/
+      LITE_ALLOW_INSECURE: "false"
 networks:
   rmqbq-test-net:
     driver: bridge
