@@ -21,7 +21,21 @@ export interface DatabaseOptions extends Knex.Config {
   client: 'pg' | 'sqlite3' | 'mssql' | 'mysql' | 'mysql2' | 'oracledb'
 }
 
-export type DefaultCoordinatorOptions = RedisOptions | MQTTOptions | DatabaseOptions | undefined
+export interface LiteOptions {
+  encryptionKey: string
+  path: string
+  host: string
+  port: number
+  protocol: 'http' | 'https' | 'ws' | 'wss'
+  allowInsecure?: boolean
+}
+
+export type DefaultCoordinatorOptions =
+  | RedisOptions
+  | MQTTOptions
+  | DatabaseOptions
+  | LiteOptions
+  | undefined
 
 export interface RabbitMQConnectionOptions extends amqplib.Options.Connect {}
 
@@ -94,10 +108,11 @@ export interface Config<T = Buffer> {
   rmqQueueType?: 'channel' | 'confirmChannel'
   rmqConnectionOptions?: RabbitMQConnectionOptions
   rmqQueueOptions?: RabbitMQQueueOptions
-  coordinator: CoordinatorDriver | 'memory' | 'redis' | 'mqtt' | 'database'
+  coordinator: CoordinatorDriver | 'memory' | 'redis' | 'mqtt' | 'database' | 'lite'
   redisOptions?: RedisOptions
   mqttOptions?: MQTTOptions
   databaseOptions?: DatabaseOptions
+  liteOptions?: LiteOptions
   debug: boolean
   loggerOptions?: LoggerOptions
   interval: number

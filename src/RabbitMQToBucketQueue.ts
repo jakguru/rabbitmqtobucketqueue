@@ -11,6 +11,7 @@ import {
   MemoryCoordinator,
   MQTTCoordinator,
   RedisCoordinator,
+  LiteCoordinator,
 } from '../src/coordinators'
 import pino from 'pino'
 import { ReEnquableError } from '../extendables'
@@ -322,6 +323,14 @@ export class RabbitMQToBucketQueue<T = Buffer>
             options.redisOptions as RMQBQ.RedisOptions
           )
           break
+
+        case 'lite':
+          this.#coordinator = await LiteCoordinator.initialize<RMQBQ.LiteOptions>(
+            options.queue,
+            options.maxBatch,
+            options.interval,
+            options.liteOptions as RMQBQ.LiteOptions
+          )
       }
     }
     this.#logger.info(`Booted and ready to consume`)
@@ -681,6 +690,16 @@ export class RabbitMQToBucketQueue<T = Buffer>
             exists: { message: 'is required when coordinator is database' },
             type: 'databaseOptions',
             databaseOptions: true,
+          }
+        }
+        return {}
+      },
+      liteOptions: function (_value, attributes) {
+        if (attributes.coordinator === 'lite') {
+          return {
+            exists: { message: 'is required when coordinator is lite' },
+            type: 'liteOptions',
+            liteOptions: true,
           }
         }
         return {}

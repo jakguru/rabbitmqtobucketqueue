@@ -32,6 +32,8 @@ export class CoordinationServer {
     this.#io.on('connection', this.#onSocketConnect.bind(this))
     this.#encryptionKey = encryptionKey
     this.#encryption = new Encryption(encryptionKey, 'aes-256-cbc', allowInsecure)
+    this.#interval = setInterval(this.#onInterval, 100)
+    this.#onInterval()
   }
 
   public get balances(): Map<string, number> {
@@ -52,37 +54,38 @@ export class CoordinationServer {
     this.#sockets.forEach((socket) => socket.emit(encryptedEvent, ...encryptedArgs))
   }
 
+  #emit = (socket: SIO.Socket, event: string, ...args: Array<any>) => {
+    const encryptedEvent = this.#encryption.encrypt(event, 1000, 'event')
+    const encryptedArgs = args.map((arg) => this.#encryption.encrypt(arg, 1000, event))
+    socket.emit(encryptedEvent, ...encryptedArgs)
+  }
+
   #onInterval = () => {
     this.#coordinators.forEach((coordinator, queue) => {
       const event = ['queue', queue, 'balance'].join(':')
       this.#broadcast(event, coordinator.balance)
     })
-    clearImmediate(this.#onNextTick!)
-    this.#onNextTick = undefined
   }
 
-  #onSocketConnect = async (socket: SIO.Socket, next: (e?: Error) => void) => {
+  #onSocketConnect = async (socket: SIO.Socket) => {
     const { handshake } = socket
     try {
       await jwt.verify(handshake.auth.token, this.#encryptionKey)
     } catch (e) {
-      return next(new Error('Authentication Failed'))
+      socket.emit('error', new Error('Authentication Failed'))
+      socket.disconnect(true)
     }
     socket.onAny((event, ...args) => this.#onSocketEvent(socket, event, ...args))
     socket.on('disconnect', this.#onSocketDisconnect.bind(this, socket))
     this.#sockets.set(socket.id, socket)
-    if ('undefined' === typeof this.#interval) {
-      this.#interval = setInterval(this.#onInterval, 100)
-      this.#onInterval()
-    }
-    return next()
+    this.#coordinators.forEach((coordinator, queue) => {
+      const event = ['queue', queue, 'balance'].join(':')
+      this.#emit(socket, event, coordinator.balance)
+    })
   }
 
   #onSocketDisconnect = (socket: SIO.Socket) => {
     this.#sockets.delete(socket.id)
-    if (this.#sockets.size === 0) {
-      clearInterval(this.#interval)
-    }
   }
 
   #onSocketEvent = async (socket: SIO.Socket, event: string, ...args: Array<any>) => {
@@ -110,6 +113,22 @@ export class CoordinationServer {
           socket.emit('error', err.message)
         }
         break
+
+      case 'reset':
+        try {
+          this.#resetBalance(decryptedArgs)
+        } catch (err) {
+          socket.emit('error', err.message)
+        }
+        break
+
+      case 'ping':
+        try {
+          this.#emit(socket, 'pong')
+        } catch (err) {
+          socket.emit('error', err.message)
+        }
+        break
     }
   }
 
@@ -127,6 +146,9 @@ export class CoordinationServer {
     if ('number' !== typeof interval || interval < 1) {
       throw new Error('Invalid coordinator configuration')
     }
+    if (this.#coordinators.has(queue)) {
+      return
+    }
     this.#coordinators.set(queue, new MemoryCoordinator(queue, maxBatch, interval))
   }
 
@@ -143,6 +165,21 @@ export class CoordinationServer {
       throw new Error('Invalid coordinator')
     }
     coordinator.increment(amount)
+    if ('undefined' === typeof this.#onNextTick) {
+      this.#onNextTick = setImmediate(this.#onInterval)
+    }
+  }
+
+  #resetBalance = (decryptedArgs: unknown[]) => {
+    const [queue] = decryptedArgs
+    if ('string' !== typeof queue || queue.length === 0) {
+      throw new Error('Invalid coordinator')
+    }
+    const coordinator = this.#coordinators.get(queue)
+    if ('undefined' === typeof coordinator) {
+      throw new Error('Invalid coordinator')
+    }
+    coordinator.reset()
     if ('undefined' === typeof this.#onNextTick) {
       this.#onNextTick = setImmediate(this.#onInterval)
     }

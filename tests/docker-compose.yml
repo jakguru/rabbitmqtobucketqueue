@@ -50,7 +50,7 @@ services:
     ports: 
       - "${LITE_PORT}:6363"
     environment:
-      LITE_SECRET: iaamverysecretkey
+      LITE_SECRET: someveryimportantsecret
       LITE_PATH: /rmqbqc/
       LITE_ALLOW_INSECURE: "false"
 networks:

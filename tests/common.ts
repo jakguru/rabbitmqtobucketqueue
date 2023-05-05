@@ -58,3 +58,12 @@ export const mqttConnectionOptions: RMQBQ.MQTTOptions = {
   host: 'localhost',
   port: parseInt(`${process.env.MQTT_PORT}`.toString()) || 1883,
 }
+
+export const liteConnectionOptions: RMQBQ.LiteOptions = {
+  encryptionKey: process.env.LITE_KEY || 'rmqbq-testing',
+  path: process.env.LITE_PATH || '/rmqbqc/',
+  host: process.env.LITE_HOST || 'localhost',
+  port: parseInt(`${process.env.LITE_PORT}`.toString()) || 6365,
+  protocol: (process.env.LITE_PROTOCOL as 'http' | 'https' | 'ws' | 'wss') || 'http',
+  allowInsecure: 'true' === process.env.LITE_ALLOW_INSECURE?.toLowerCase(),
+}

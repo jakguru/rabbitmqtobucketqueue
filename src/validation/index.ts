@@ -9,6 +9,7 @@ import databaseConnectionOptions from './types/databaseConnectionOptions'
 import loggerOptions from './types/loggerOptions'
 import callable from './types/callable'
 import undefinedType from './types/undefined'
+import liteOptions from './types/liteOptions'
 import validate from 'validate.js'
 
 import type { ValidationType, ValidationMessage } from '../../contracts/validation'
@@ -59,5 +60,6 @@ addCustomType(
 addCustomType('loggerOptions', loggerOptions, 'is not a valid logger configuration')
 addCustomType('callable', callable, 'is not a callable function')
 addCustomType('undefined', undefinedType, 'is defined')
+addCustomType('liteOptions', liteOptions, 'does not match interface LiteOptions')
 
 export default validate
